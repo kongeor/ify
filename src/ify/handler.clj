@@ -6,6 +6,7 @@
     [ring.middleware.format :refer [wrap-restful-format]]
     [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
     [ify.db :as db]
+    [ify.spot :as spot]
     [ify.oauth :as oauth]
     [clj-spotify.core :as spotify]
     [system.repl :refer [system]]
@@ -17,8 +18,19 @@
     (if keys
       (let [{access_token :access_token refresh_token :refresh_token} keys
             user (spotify/get-current-users-profile {} access_token)]
+        (println "current user profile " user)
         (if user
-          (db/upsert-user user access_token refresh_token))))))
+          (let [u (db/upsert-user user access_token refresh_token)]
+            (spot/fetch-and-persist u)
+            u))))))
+
+(defn- fmt-latest-tracks [uid]
+  (if uid
+    (->> (db/get-play-data uid)
+         (map #(-> % :track :name))
+         (clojure.string/join "<br>"))))
+
+#_(fmt-latest-tracks :08uc4dh5sl6f8888eydkq2sbz)
 
 (defroutes routes
   (GET "/" []
@@ -27,7 +39,8 @@
                user (db/get-entity uid)
                username (or (:display_name user) "")]
            (println session)
-           (str "Welcome " username "!<br><a href=\"/login\">Login</a>"))))
+           (str "Welcome " username "!<br><a href=\"/login\">Login</a><br>"
+                (fmt-latest-tracks uid)))))
   (GET "/yo" []
        (db/get-artists)
        #_(->  (get-artists)

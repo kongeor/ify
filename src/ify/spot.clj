@@ -1,6 +1,7 @@
 (ns ify.spot
   (:require [clj-spotify.core :as spotify]
             [system.repl :refer [system]]
+            [ify.db :as db]
             [crux.api :as crux])
   (:import (java.security MessageDigest)))
 
@@ -124,7 +125,7 @@
    :href "https://api.spotify.com/v1/me/player/recently-played?limit=2"})
 
 
-(def track-keys [:explicit :track_number :type])
+(def track-keys [:explicit :name :track_number :type])
 
 (def track (-> data :items first :track))
 
@@ -171,7 +172,7 @@
   (let [u (select-keys user-data user-keys)]
     (assoc u :crux.db/id (-> user-data :id keyword))))
 
-(get-user-data user-data)
+#_(get-user-data user-data)
 
 ;; 2
 #_(get-user-plays (-> user-data get-user-data :crux.db/id) data)
@@ -214,7 +215,7 @@
 
 (defn prepare-for-tx [data]
   (mapv (fn [d]
-         [:crux.tx/cas
+         [:crux.tx/put
           d]) data))
 
 #_(get-all-the-things (-> user-data get-user-data :crux.db/id) data)
@@ -229,3 +230,24 @@
     (-> system :db :db)
     (prepare-for-tx
       (get-all-the-things uid data))))
+
+
+(defn- get-data-after [data played-at]
+  (let [played-at-milis (inst-ms played-at)]
+    (println "filtering by play time " played-at-milis)
+    (assoc data
+      :items
+      (filter #(> (-> % :played_at clojure.instant/read-instant-date inst-ms)
+                  played-at-milis) (:items data)))))
+
+(defn fetch-and-persist [{id :crux.db/id access_token :access_token}]
+  ;; TODO filter out existing
+  (let [data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
+        _ (println "** -> " (-> data :items count) "user " id)
+        {played_at :played_at} (first (db/get-last-play id))
+        filtered (if played_at (get-data-after data played_at) data)]
+    (println "persisting filtered " (-> filtered :items count) " for user " id)
+    (persist-all-data id filtered)))
+
+(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
+  (println played_at))
