@@ -25,5 +25,21 @@
 
 #_(-> system :db :db)
 
-#_(get-entity :2jkl2xJVm71azWAgZKyf42)
+(def user-keys [:display_name :type])
+
+(defn upsert-user [user access_token refresh_token]
+  (let [user-data (select-keys user user-keys)
+        id (-> user :id keyword)
+        user-data (assoc user-data :crux.db/id id :access_token access_token :refresh_token refresh_token)
+        existing (get-entity id)]
+    (println (pr-str user-data))
+    (println (pr-str existing))
+    (if existing
+      existing
+      (do
+        (crux/submit-tx
+          (-> system :db :db)
+          [[:crux.tx/put
+            user-data]])
+        user-data))))
 
