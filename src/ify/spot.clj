@@ -249,5 +249,5 @@
     (println "persisting filtered " (-> filtered :items count) " for user " id)
     (persist-all-data id filtered)))
 
-(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
+#_(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
   (println played_at))
