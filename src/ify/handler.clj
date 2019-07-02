@@ -7,6 +7,7 @@
     [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
     [ify.db :as db]
     [ify.spot :as spot]
+    [ify.html :as html]
     [ify.oauth :as oauth]
     [clj-spotify.core :as spotify]
     [system.repl :refer [system]]
@@ -36,17 +37,16 @@
   (GET "/" []
        (fn [{session :session}]
          (let [uid (:spot.user/id session)
-               user (db/get-entity uid)
-               username (or (:display_name user) "")]
-           (println session)
-           (str "Welcome " username "!<br><a href=\"/login\">Login</a><br>"
-                (fmt-latest-tracks uid)))))
+               user (db/get-entity uid)]
+           (html/index uid))))
   (GET "/yo" []
        (db/get-artists)
        #_(->  (get-artists)
            response
            (content-type "application/json")
            (charset "UTF-8")))
+  (GET "/foo" []
+       (html/index "foo"))
   (GET "/tracks" []
        (db/get-tracks))
   (GET "/entity/:id" []
