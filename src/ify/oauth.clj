@@ -54,3 +54,17 @@
         nil))
     nil))
 
+(defn get-access-token [refresh-token]
+  (let [options {:url (:access-token-uri oauth2-params)
+                 :method :post
+                 :form-params
+                 {:grant_type "refresh_token"
+                  :refresh_token refresh-token}
+                 :basic-auth [(:client-id oauth2-params) (:client-secret oauth2-params)]}
+            {:keys [status error body] :as res} @(http/request options)]
+        (if (= status 200)
+          (json/parse-string body true)
+          (println status body))))
+
+#_(get-access-token (-> (ify.db/get-users) first :refresh_token))
+

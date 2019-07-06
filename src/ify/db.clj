@@ -16,26 +16,28 @@
                        '{:find [e]
                          :where [[e :type "user"]]})))
 
+#_(get-users)
+
 (defn get-artists []
   (entity-data (-> system :db :db)
                (crux/q (crux/db (-> system :db :db))
                        '{:find [e]
-                         :where [[e :type "artist"]]})))
+                         :where [[e :kino.artist/name ?]]})))
+
+#_(get-artists)
 
 (defn get-tracks []
   (entity-data (-> system :db :db)
                (crux/q (crux/db (-> system :db :db))
                        '{:find [e]
-                         :where [[e :type "track"]]})))
-#_(get-tracks)
+                         :where [[e :kino.track/name ?]]})))
 
 (defn get-plays [user-id]
   (entity-data (-> system :db :db)
                (crux/q (crux/db (-> system :db :db))
                        '{:find [e played-at]
-                         :where [[e :type "play"]
-                                 [e :user_id user-id]
-                                 [e :played_at played-at]]
+                         :where [[e :kino.play/user-id user-id]
+                                 [e :kino.play/played-at]]
                          :order-by [[played-at :desc]]
                          :limit 20})))
 
@@ -43,32 +45,32 @@
   (entity-data (-> system :db :db)
                (crux/q (crux/db (-> system :db :db))
                        '{:find [e played-at]                ;; TODO ask about this
-                         :where [[e :type "play"]
-                                 [e :user_id user-id]
-                                 [e :played_at played-at]]
+                         :where [[e :kino.play/user-id user-id]
+                                 [e :kino.play/played-at played-at]]
                          :order-by [[played-at :desc]]
                          :limit 1})))
 
 (defn get-play-data [user-id]
   (->> (get-plays user-id)
-       (map #(assoc % :track (get-entity (:track_id %))))
-       (map #(assoc-in % [:track :album] (get-entity (-> % :track :album_id))))
-       (map (fn [t] (assoc-in t [:track :artists] (mapv get-entity (-> t :track :artist_ids)))))))
+       (map #(assoc % :kino.play/track (get-entity (:kino.play/track-id %))))
+       (map #(assoc-in % [:kino.play/track :kino.play/album] (get-entity (-> % :kino.play/track :kino.track/album-id))))
+       (map (fn [t] (assoc-in t [:kino.play/track :kino.play/artists] (mapv get-entity (-> t :kino.play/track :kino.track/artist-ids)))))))
 
 #_(-> system :db :db)
 
 (def user-keys [:display_name :type])
 
-(defn upsert-user [user access_token refresh_token]
+(defn upsert-user [user refresh_token]
   (let [user-data (select-keys user user-keys)
         id (-> user :id keyword)
-        user-data (assoc user-data :crux.db/id id :access_token access_token :refresh_token refresh_token)
+        user-data (assoc user-data :crux.db/id id :kino.user/refresh-token refresh_token)
         existing (get-entity id)]
-    (println (pr-str user-data))
-    (println (pr-str existing))
-    (crux/submit-tx
-      (-> system :db :db)
-      [[:crux.tx/put
-        user-data]])
-    user-data))
+    (if existing
+      existing
+      (do
+        (crux/submit-tx
+          (-> system :db :db)
+          [[:crux.tx/put
+            user-data]])
+        user-data))))
 

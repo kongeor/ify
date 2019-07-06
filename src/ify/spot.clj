@@ -145,7 +145,13 @@
                t (assoc t :crux.db/id (-> track :id keyword))
                t (assoc t :album_id (track-album-id track))
                t (assoc t :artist_ids (track-artist-ids track))]
-           t) (-> data :items)))
+           (assoc {}
+             :crux.db/id (-> track :id keyword)
+             :kino.track/album-id (track-album-id track)
+             :kino.track/artist-ids (track-artist-ids track)
+             :kino.track/explicit (:explicit t)
+             :kino.track/number (:track_number t)
+             :kino.track/name (:name t))) (-> data :items)))
 
 ;; 1
 #_(get-tracks data)
@@ -161,10 +167,11 @@
                 track_id (-> % :track :id keyword)]
             (println (str (name uid) (name track_id) (inst-ms played_at)))
             {:crux.db/id (keyword (md5 (str (name uid) (name track_id) (inst-ms played_at))))
-             :user_id uid
-             :track_id track_id
-             :played_at played_at
-             :type "play"}) d)))
+             :kino.play/user-id uid
+             :kino.play/track-id track_id
+             :kino.play/played-at played_at
+             ;:type "play"
+             }) d)))
 
 (def user-keys [:display_name :type])
 
@@ -175,7 +182,7 @@
 #_(get-user-data user-data)
 
 ;; 2
-#_(get-user-plays (-> user-data get-user-data :crux.db/id) data)
+#_(get-user-plays :asdf data)
 
 (def artist-keys [:name :type])
 
@@ -185,7 +192,8 @@
                 (let [artists (-> items :track :album :artists)]
                   (mapv (fn [artist]
                           (let [a (select-keys artist artist-keys)]
-                            (assoc a :crux.db/id (-> artist :id keyword)))) artists)))
+                            (assoc {} :crux.db/id (-> artist :id keyword)
+                                      :kino.artist/name (:name a)))) artists)))
               (:items data))))
 
 #_(-> data :items first :track :album :artists)
@@ -199,7 +207,11 @@
   (map (fn [items]
          (let [album (-> items :track :album)]
            (let [a (select-keys album album-keys)]
-             (assoc a :crux.db/id (-> album :id keyword)))))
+             (assoc {} :crux.db/id (-> album :id keyword)   ;; TODO no need for assoc
+                      :kino.album/name (:name a)
+                      :kino.album/release-date (:release_date a)
+                      :kino.album/images (:images a)
+                      :kino.album/total-tracks (:total_tracks a)))))
        (:items data)))
 
 ;; 4
@@ -218,7 +230,7 @@
          [:crux.tx/put
           d]) data))
 
-#_(get-all-the-things (-> user-data get-user-data :crux.db/id) data)
+#_(get-all-the-things :asdf #_(-> user-data get-user-data :crux.db/id) data)
 
 #_(prepare-for-tx
   (get-all-the-things (-> user-data get-user-data :crux.db/id) data))
@@ -240,7 +252,7 @@
       (filter #(> (-> % :played_at clojure.instant/read-instant-date inst-ms)
                   played-at-milis) (:items data)))))
 
-(defn fetch-and-persist [{id :crux.db/id access_token :access_token}]
+(defn fetch-and-persist [{id :crux.db/id refresh-token :kino.user/refresh-token}]
   ;; TODO filter out existing
   (let [data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
         _ (println "** -> " (-> data :items count) "user " id)
