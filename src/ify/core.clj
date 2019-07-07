@@ -1,6 +1,7 @@
 (ns ify.core
   (:require [system.repl :refer [set-init! go]]
-            [ify.systems :refer [base-system]]))
+            [ify.systems :refer [base-system]])
+  (:gen-class))
 
 (defn -main
   "Start a production system, unless a system is passed as argument (as in the dev-run task)."

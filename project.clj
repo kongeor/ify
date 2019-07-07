@@ -14,7 +14,8 @@
                  [org.rocksdb/rocksdbjni "5.17.2"]
                  [clj-spotify "0.1.9"]
                  [hiccup "1.0.5"]
-                 [com.taoensso/timbre "4.10.0"]]
+                 [com.taoensso/timbre "4.10.0"]
+                 [clojurewerkz/quartzite "2.1.0"]]
   :plugins [[lein-environ "1.0.0"]]
   :profiles {:dev {:source-paths ["dev"]
                    :env {:http-port 3000}}

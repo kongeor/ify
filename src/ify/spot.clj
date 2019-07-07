@@ -240,6 +240,7 @@
 #_(-> system :db :db)
 
 (defn persist-all-data [uid data]
+  ;; TODO filter out existin
   (crux/submit-tx
     (-> system :db :db)
     (prepare-for-tx
@@ -255,7 +256,7 @@
                   played-at-milis) (:items data)))))
 
 (defn fetch-and-persist [{id :crux.db/id refresh-token :kino.user/refresh-token}]
-  ;; TODO filter out existing
+  ;; TODO fetch after
   (let [access_token (oauth/get-access-token refresh-token)
         _ (println (str "access token for user " id " is " access_token))
         data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
