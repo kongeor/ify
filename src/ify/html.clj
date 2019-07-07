@@ -42,11 +42,11 @@
            (for [p play-data]
              [:div.row
               [:div.two.columns
-               [:img.u-max-full-width {:src (get-in p [:track :album :images 1 :url])}]]
+               [:img.u-max-full-width {:src (get-in p [:kino.play/track :kino.track/album :kino.album/images 1 :url])}]]
               [:div.ten.columns
-               [:h5 (-> p :track :name)]
-               [:p (str "by " (->> (-> p :track :artists)
-                                   (map :name)
+               [:h5 (-> p :kino.play/track :kino.track/name)]
+               [:p (str "by " (->> (-> p :kino.play/track :kino.track/artists)
+                                   (map :kino.artist/name)
                                    (clojure.string/join ", ")))]
                [:p (-> p :played_at)]]])]))
       (base [:a.button.button-primary {:href "/login"} "Login"]))))

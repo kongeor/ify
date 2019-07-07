@@ -63,7 +63,7 @@
                  :basic-auth [(:client-id oauth2-params) (:client-secret oauth2-params)]}
             {:keys [status error body] :as res} @(http/request options)]
         (if (= status 200)
-          (json/parse-string body true)
+          (:access_token (json/parse-string body true))
           (println status body))))
 
 #_(get-access-token (-> (ify.db/get-users) first :refresh_token))

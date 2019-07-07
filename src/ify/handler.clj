@@ -21,7 +21,7 @@
             user (spotify/get-current-users-profile {} access_token)]
         (println "current user profile " user)
         (if user
-          (let [u (db/upsert-user user access_token refresh_token)]
+          (let [u (db/upsert-user user refresh_token)]
             (spot/fetch-and-persist u)
             u))))))
 

@@ -13,7 +13,8 @@
                  [juxt/crux "19.06-1.1.0-alpha"]
                  [org.rocksdb/rocksdbjni "5.17.2"]
                  [clj-spotify "0.1.9"]
-                 [hiccup "1.0.5"]]
+                 [hiccup "1.0.5"]
+                 [com.taoensso/timbre "4.10.0"]]
   :plugins [[lein-environ "1.0.0"]]
   :profiles {:dev {:source-paths ["dev"]
                    :env {:http-port 3000}}
@@ -22,4 +23,5 @@
                     :dependencies [[org.clojure/tools.nrepl "0.2.12"]]}
              :uberjar {:aot :all}}
   :main ^:skip-aot ify.core
-  :repl-options {:init-ns ify.core})
+  :repl-options {:init-ns user}
+  )

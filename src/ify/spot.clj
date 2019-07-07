@@ -2,6 +2,7 @@
   (:require [clj-spotify.core :as spotify]
             [system.repl :refer [system]]
             [ify.db :as db]
+            [ify.oauth :as oauth]
             [crux.api :as crux])
   (:import (java.security MessageDigest)))
 
@@ -192,8 +193,8 @@
                 (let [artists (-> items :track :album :artists)]
                   (mapv (fn [artist]
                           (let [a (select-keys artist artist-keys)]
-                            (assoc {} :crux.db/id (-> artist :id keyword)
-                                      :kino.artist/name (:name a)))) artists)))
+                            {:crux.db/id (-> artist :id keyword)
+                             :kino.artist/name (:name a)})) artists)))
               (:items data))))
 
 #_(-> data :items first :track :album :artists)
@@ -207,11 +208,12 @@
   (map (fn [items]
          (let [album (-> items :track :album)]
            (let [a (select-keys album album-keys)]
-             (assoc {} :crux.db/id (-> album :id keyword)   ;; TODO no need for assoc
-                      :kino.album/name (:name a)
-                      :kino.album/release-date (:release_date a)
-                      :kino.album/images (:images a)
-                      :kino.album/total-tracks (:total_tracks a)))))
+             {:crux.db/id (-> album :id keyword)
+              :kino.album/name (:name a)
+              :kino.album/release-date (:release_date a)
+              :kino.album/images (:images a)
+              :kino.album/total-tracks (:total_tracks a)
+              :kino.album/artist-ids (track-artist-ids album)})))
        (:items data)))
 
 ;; 4
@@ -254,7 +256,10 @@
 
 (defn fetch-and-persist [{id :crux.db/id refresh-token :kino.user/refresh-token}]
   ;; TODO filter out existing
-  (let [data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
+  (let [access_token (oauth/get-access-token refresh-token)
+        _ (println (str "access token for user " id " is " access_token))
+        data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
+        _ (spit "tracks.edn" data)
         _ (println "** -> " (-> data :items count) "user " id)
         {played_at :played_at} (first (db/get-last-play id))
         filtered (if played_at (get-data-after data played_at) data)]
@@ -263,3 +268,9 @@
 
 #_(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
   (println played_at))
+
+#_(let [u {:display_name "egoprovato",
+         :type "user",
+         :crux.db/id :08uc4dh5sl6f8888eydkq2sbz,
+         :kino.user/refresh-token "AQADs7uY1JpNEXNWqRY_AmCGvXPGG6PMqC6AVd_bN6t5oTtms4wwbTuLR2sfciI1lbVRuwPGvt9nuti5UPYrjRU7dGddzjQnIIveWOVBTHXAK4bwK0P6hZn2W8pMoah5zOxBoA"}]
+  (fetch-and-persist u))
