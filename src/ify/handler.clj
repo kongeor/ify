@@ -38,15 +38,29 @@
        (fn [{session :session}]
          (let [uid (:spot.user/id session)
                user (db/get-entity uid)]
+           (println "-> " uid user session)
            (html/index uid))))
   (GET "/yo" []
-       (db/get-artists)
+       (fn [{session :session}]
+         (taoensso.timbre/info "getting yo")
+         (->
+           (response/response (db/get-artists))
+           (assoc :session (assoc session :foo :bar))))
        #_(->  (get-artists)
            response
            (content-type "application/json")
            (charset "UTF-8")))
+  (GET "/count" []
+       (fn [{session :session}]
+         (let [count (:count session 0)
+               _ (println "s>" session)
+               session (assoc session :count (inc count))]
+           (-> (response (str "You accessed this page " count " times."))
+             (assoc :session session)))))
   (GET "/foo" []
        (html/index "foo"))
+  (GET "/boom" []
+       (ex-info "boom!" {}))
   (GET "/tracks" []
        (db/get-tracks))
   (GET "/entity/:id" []
@@ -61,14 +75,26 @@
   (GET "/oauth/callback" []
        (fn [{params :params session :session}]
          (let [user (handle-oauth-callback params)
-               _ (println "**" user)
+               _ (println "**" user session)
                session (assoc session :spot.user/id (:crux.db/id user))]
+           (println "session: " session)
            (->
              (response/redirect "/")
              (assoc :session session)))))
   (route/not-found "404"))
 
+(defn wrap-exception [handler]
+  (fn [request]
+    (try (handler request)
+         (catch Exception e
+           (taoensso.timbre/fatal e)
+           {:status 500
+            :body "Oh no! :'("}))))
+
 (def app
   (-> routes
     (wrap-restful-format :formats [:json])
-    (wrap-defaults site-defaults)))
+    (wrap-defaults (-> site-defaults
+                     #_(assoc-in [:session :cookie-attrs :max-age] 3600)
+                     (assoc-in [:session :cookie-attrs :same-site] :lax))) ;; TODO check
+    wrap-exception))

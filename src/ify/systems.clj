@@ -8,6 +8,7 @@
             [environ.core :refer [env]]
             [com.stuartsierra.component :as component]
             [taoensso.timbre :as timbre]
+            [ify.loggly :as loggly]
             [system.repl :refer [system]]
             [crux.api :as crux]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -16,14 +17,20 @@
             [clojurewerkz.quartzite.jobs :refer [defjob] :as j])
   )
 
+(timbre/merge-config!
+  {:appenders
+   {:loggly (loggly/loggly-appender
+              {:tags [:kino]
+               :token (env :loggly-api-token)})}})
+
 ;; crux
 
 (defrecord CruxDb [db]
   component/Lifecycle
   (start [component]
     (let [db (crux/start-standalone-system {:kv-backend "crux.kv.rocksdb.RocksKv"
-                                            :db-dir "data/db-dir-1"
-                                            :event-log-dir "logs/db-dir-1"})]
+                                            :db-dir (str (env :db-location) "/db-dir-1")
+                                            :event-log-dir (str (env :db-location) "/eventlog-1")})]
       (timbre/info "starting crux")
       (assoc component :db db)))
   (stop [component]
@@ -40,8 +47,9 @@
 (defjob HistoryWatcher
         [ctx]
         (doseq [u (db/get-users)]
-          (spot/fetch-and-persist u))
-        (println "yoyoyoyoy!"))
+          (timbre/info "fetching history for user" (:crux.db/id u))
+          (spot/fetch-and-persist u)
+          (timbre/info "processed history for user" (:crux.db/id u))))
 
 (defn str->int [s]
   (Integer/parseInt s))

@@ -6,9 +6,12 @@
   (let [sys (-> system :db :db)]
     (crux/entity (crux/db sys) id)))
 
-(defn- entity-data [system entities]
-  (let [sys (partial (crux/db system))]
-    (map #(crux/entity sys (first %)) entities)))
+(defn- entity-data
+  ([entities]
+   (entity-data (-> system :db :db) entities))
+  ([system entities]
+    (let [sys (partial (crux/db system))]
+      (map #(crux/entity sys (first %)) entities))))
 
 (defn get-users []
   (entity-data (-> system :db :db)
@@ -40,6 +43,22 @@
                        '{:find [e]
                          :where [[e :kino.track/name ?]]})))
 
+(comment
+  (->>
+    (entity-data
+      (-> system :db :db)
+      (crux/q (crux/db (-> system :db :db))
+              '{:find [e]
+                :where [[e :kino.play/track-id ?t]
+                        [e1 :kino.play/track-id ?t]
+                        [e :kino.play/user-id u1]
+                        [e1 :kino.play/user-id u2]
+                        [(not= e e1)]
+                        [(not= u1 u2)]]}))
+    (map (fn [e] [(:kino.play/track-id e)]))
+    distinct
+    (entity-data (-> system :db :db))))
+
 #_ (get-tracks)
 
 ; (def data (get-tracks))
@@ -50,23 +69,34 @@
 #_(partition-by (fn [v] (or (> 3 v) (> v 6))) [1 2 3 4 5 6 7 8 ])
 
 
-(defn get-plays [user-id]
+(defn get-plays [user-id & {:keys [offset limit] :or {offset 0 limit 50}}]
   (entity-data (-> system :db :db)
                (crux/q (crux/db (-> system :db :db))
-                       '{:find [e played-at]
-                         :where [[e :kino.play/user-id user-id]
-                                 [e :kino.play/played-at played-at]]
-                         :order-by [[played-at :desc]]
-                         :limit 50})))
+                       {:find '[?e ?played-at]                 ;; TODO ask about this
+                        :where [['?e :kino.play/user-id user-id]
+                                ['?e :kino.play/played-at '?played-at]]
+                        :order-by [['?played-at :desc]]
+                        :limit limit
+                        :offset offset
+                        })))
+
+#_(get-plays :08uc4dh5sl6f8888eydkq2sbz :limit 2 :offset 10)
+
+(comment
+  (defn naughty []
+    (let [all
+          (->>
+            (get-plays :08uc4dh5sl6f8888eydkq2sbz :limit 200 :offset 0)
+            (map #(-> % :kino.play/track-id))
+            (map get-entity))
+          cnt (count all)
+          expl (count (filter :kino.track/explicit all))]
+      (/ expl cnt))))
 
 (defn get-last-play [user-id]
-  (entity-data (-> system :db :db)
-               (crux/q (crux/db (-> system :db :db))
-                       '{:find [e played-at]                ;; TODO ask about this
-                         :where [[e :kino.play/user-id user-id]
-                                 [e :kino.play/played-at played-at]]
-                         :order-by [[played-at :desc]]
-                         :limit 1})))
+  (get-plays user-id :limit 1))
+
+#_(get-last-play :08uc4dh5sl6f8888eydkq2sbz)
 
 (defn get-play-data [user-id]
   (->> (get-plays user-id)

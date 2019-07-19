@@ -3,7 +3,8 @@
             [system.repl :refer [system]]
             [ify.db :as db]
             [ify.oauth :as oauth]
-            [crux.api :as crux])
+            [crux.api :as crux]
+            [taoensso.timbre :as timbre])
   (:import (java.security MessageDigest)))
 
 (def data
@@ -166,7 +167,6 @@
   (let [d (:items data)]
     (map #(let [played_at (-> % :played_at clojure.instant/read-instant-date)
                 track_id (-> % :track :id keyword)]
-            (println (str (name uid) (name track_id) (inst-ms played_at)))
             {:crux.db/id (keyword (md5 (str (name uid) (name track_id) (inst-ms played_at))))
              :kino.play/user-id uid
              :kino.play/track-id track_id
@@ -258,17 +258,22 @@
 (defn fetch-and-persist [{id :crux.db/id refresh-token :kino.user/refresh-token}]
   ;; TODO fetch after
   (let [access_token (oauth/get-access-token refresh-token)
-        _ (println (str "access token for user " id " is " access_token))
-        data (spotify/get-current-users-recently-played-tracks {:limit 50} access_token)
-        _ (spit "tracks.edn" data)
-        _ (println "** -> " (-> data :items count) "user " id)
-        {played_at :played_at} (first (db/get-last-play id))
-        filtered (if played_at (get-data-after data played_at) data)]
-    (println "persisting filtered " (-> filtered :items count) " for user " id)
-    (persist-all-data id filtered)))
+        last-played-at (-> (db/get-last-play id) first :kino.play/played-at)
+        opts {:limit 50}
+        opts (if last-played-at (assoc opts :after (inst-ms last-played-at)) opts)
+        data (spotify/get-current-users-recently-played-tracks opts access_token)
+        ; _ (spit "tracks.edn" data)
+        ; _ (timbre/log "" (-> data :items count) "user " id)
+        ; {played_at :played_at} (first (db/get-last-play id))
+        ; filtered (if played_at (get-data-after data played_at) data)
+        ]
+    (timbre/info "persisting " (-> data :items count) " for user " id)
+    (persist-all-data id data)))
 
 #_(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
   (println played_at))
+
+#_(:kino.play/played-at (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))
 
 #_(let [u {:display_name "egoprovato",
          :type "user",

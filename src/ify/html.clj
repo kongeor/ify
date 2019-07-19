@@ -36,7 +36,7 @@
   (let [user (and uid (db/get-entity uid))]
     (if user
       (let [play-data (db/get-play-data uid)]
-        (clojure.pprint/pprint play-data)
+        #_(clojure.pprint/pprint play-data)
         (base
           [:div [:p (str "Welcome " (:display_name user))]
            (for [p play-data]
