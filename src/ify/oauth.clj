@@ -1,6 +1,7 @@
 (ns ify.oauth
   (:require [environ.core :refer [env]]
             [cheshire.core :as json]
+            [taoensso.timbre :as timbre]
             [org.httpkit.client :as http])
   (:import (java.net URLEncoder)))
 
@@ -36,8 +37,7 @@
 
 (defn get-authentication-response [csrf-token response-params]
   (if (= csrf-token (:state response-params))
-    (try
-      (let [options {:url (:access-token-uri oauth2-params)
+    (let [options {:url (:access-token-uri oauth2-params)
                      :method :post
                      :form-params
                      {:code (:code response-params)
@@ -48,10 +48,7 @@
             {:keys [status error body] :as res} @(http/request options)]
         (if (= status 200)
           (json/parse-string body true)
-          (println status body)))
-      (catch Exception e
-        (println e)
-        nil))
+          (timbre/error "Couldn't get auth response" status error body)))
     nil))
 
 (defn get-access-token [refresh-token]
@@ -64,7 +61,5 @@
             {:keys [status error body] :as res} @(http/request options)]
         (if (= status 200)
           (:access_token (json/parse-string body true))
-          (println status body))))
-
-#_(get-access-token (-> (ify.db/get-users) first :refresh_token))
+          (timbre/error "Couldn't get access token" status error body))))
 

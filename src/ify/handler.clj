@@ -19,7 +19,6 @@
     (if keys
       (let [{access_token :access_token refresh_token :refresh_token} keys
             user (spotify/get-current-users-profile {} access_token)]
-        (println "current user profile " user)
         (if user
           (let [u (db/upsert-user user refresh_token)]
             (spot/fetch-and-persist u)
@@ -31,14 +30,10 @@
          (map #(-> % :track :name))
          (clojure.string/join "<br>"))))
 
-#_(fmt-latest-tracks :08uc4dh5sl6f8888eydkq2sbz)
-
 (defroutes routes
   (GET "/" []
        (fn [{session :session}]
-         (let [uid (:spot.user/id session)
-               user (db/get-entity uid)]
-           (println "-> " uid user session)
+         (let [uid (:spot.user/id session)]
            (html/index uid))))
   (GET "/yo" []
        (fn [{session :session}]
@@ -53,7 +48,6 @@
   (GET "/count" []
        (fn [{session :session}]
          (let [count (:count session 0)
-               _ (println "s>" session)
                session (assoc session :count (inc count))]
            (-> (response (str "You accessed this page " count " times."))
              (assoc :session session)))))
@@ -75,9 +69,7 @@
   (GET "/oauth/callback" []
        (fn [{params :params session :session}]
          (let [user (handle-oauth-callback params)
-               _ (println "**" user session)
                session (assoc session :spot.user/id (:crux.db/id user))]
-           (println "session: " session)
            (->
              (response/redirect "/")
              (assoc :session session)))))

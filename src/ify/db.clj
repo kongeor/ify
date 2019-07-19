@@ -115,7 +115,6 @@
     (let [a (atom nil)]
       (fn [e]
         (let [res (pred @a e)]
-          #_(println res e)
           (reset! a e)
           res))))
 
@@ -125,7 +124,6 @@
                       (or (nil? p)
                           (let [v (-> p :kino.play/track :kino.track/album-id)
                                 v1 (-> c :kino.play/track :kino.track/album-id)]
-                               #_(println "->" v v1)
                                (= v v1)))))
       data)
     (filter #(> (count %) 1))

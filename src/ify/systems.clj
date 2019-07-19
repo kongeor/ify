@@ -64,7 +64,6 @@
                   (t/with-schedule (schedule
                                      (repeat-forever)
                                      (with-interval-in-minutes (or (-> env :history-watcher-interval str->int) 30)))))]
-    #_(println "yo")
     (qs/schedule scheduler job trigger)))
 
 (defrecord Scheduler [scheduler]

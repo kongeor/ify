@@ -246,37 +246,12 @@
     (prepare-for-tx
       (get-all-the-things uid data))))
 
-
-(defn- get-data-after [data played-at]
-  (let [played-at-milis (inst-ms played-at)]
-    (println "filtering by play time " played-at-milis)
-    (assoc data
-      :items
-      (filter #(> (-> % :played_at clojure.instant/read-instant-date inst-ms)
-                  played-at-milis) (:items data)))))
-
 (defn fetch-and-persist [{id :crux.db/id refresh-token :kino.user/refresh-token}]
-  ;; TODO fetch after
   (let [access_token (oauth/get-access-token refresh-token)
         last-played-at (-> (db/get-last-play id) first :kino.play/played-at)
         opts {:limit 50}
         opts (if last-played-at (assoc opts :after (inst-ms last-played-at)) opts)
-        data (spotify/get-current-users-recently-played-tracks opts access_token)
-        ; _ (spit "tracks.edn" data)
-        ; _ (timbre/log "" (-> data :items count) "user " id)
-        ; {played_at :played_at} (first (db/get-last-play id))
-        ; filtered (if played_at (get-data-after data played_at) data)
-        ]
+        data (spotify/get-current-users-recently-played-tracks opts access_token)]
     (timbre/info "persisting " (-> data :items count) " for user " id)
     (persist-all-data id data)))
 
-#_(let [{played_at :played_at} (first (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))]
-  (println played_at))
-
-#_(:kino.play/played-at (db/get-last-play :08uc4dh5sl6f8888eydkq2sbz))
-
-#_(let [u {:display_name "egoprovato",
-         :type "user",
-         :crux.db/id :08uc4dh5sl6f8888eydkq2sbz,
-         :kino.user/refresh-token "AQADs7uY1JpNEXNWqRY_AmCGvXPGG6PMqC6AVd_bN6t5oTtms4wwbTuLR2sfciI1lbVRuwPGvt9nuti5UPYrjRU7dGddzjQnIIveWOVBTHXAK4bwK0P6hZn2W8pMoah5zOxBoA"}]
-  (fetch-and-persist u))
